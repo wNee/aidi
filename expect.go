@@ -11,12 +11,12 @@ import (
 type ExpectFunc func(a *Aidi) (bool, string)
 
 // Expect Checks according to the given function, which allows you to describe any kind of assertion.
-func (F *Aidi) Expect(foo ExpectFunc) *Aidi {
+func (a *Aidi) Expect(foo ExpectFunc) *Aidi {
 	//Global.NumAsserts++
-	if ok, err_str := foo(F); !ok {
-		F.AddError(err_str)
+	if ok, err_str := foo(a); !ok {
+		a.AddError(err_str)
 	}
-	return F
+	return a
 }
 
 // Checks for header and if values match
@@ -34,7 +34,7 @@ func (a *Aidi) ExpectHeader(key, value string) *Aidi {
 }
 
 // ExpectBodyJson checks if the body of the response
-// equal the bpdyJson
+// equal the json
 //
 // bodyJson the except response body json string
 func (a *Aidi) ExpectBodyJson(bodyJson string) *Aidi {
@@ -44,6 +44,27 @@ func (a *Aidi) ExpectBodyJson(bodyJson string) *Aidi {
 	buf.ReadFrom(a.Resp.Body)
 	s := buf.String()
 	equal, err := areEqualJSON(bodyJson, s)
+	if err != nil {
+		a.AddError(err.Error())
+		return a
+	}
+	if !equal {
+		a.AddError(fmt.Sprintf("ExpectBody equality test failed for %s, got value: %s", bodyJson, s))
+	}
+	return a
+}
+
+// ExpectBodyContainJson checks if the body of the response
+// contain the json
+//
+// bodyJson the except response body json string
+func (a *Aidi) ExpectBodyContainJson(bodyJson string) *Aidi {
+	Global.NumAsserts++
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(a.Resp.Body)
+	s := buf.String()
+	equal, err := containsJSON(bodyJson, s)
 	if err != nil {
 		a.AddError(err.Error())
 		return a
