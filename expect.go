@@ -54,6 +54,110 @@ func (a *Aidi) ExpectBodyJson(bodyJson string) *Aidi {
 	return a
 }
 
+func containsJSON(s1, s2 string) (bool, error) {
+	var m1 interface{}
+	var m2 interface{}
+	if err := json.Unmarshal([]byte(s1), &m1); err != nil {
+		return false, err
+	}
+	if err := json.Unmarshal([]byte(s2), &m2); err != nil {
+		return false, err
+	}
+
+	return deepContrains(m1, m2), nil
+}
+
+func deepContrains(x, y interface{}) bool {
+	v1 := reflect.ValueOf(x)
+	v2 := reflect.ValueOf(y)
+
+	if v1.Type() != v2.Type() {
+		return false
+	}
+	return deepValueContains(v1, v2, 0)
+}
+
+func deepValueContains(v1, v2 reflect.Value, depth int) bool {
+	if !v1.IsValid() || !v2.IsValid() {
+		return !v2.IsValid()
+	}
+	if v1.Type() != v2.Type() {
+		return false
+	}
+	// 10层以上深度的默认为false
+	if depth > 10 {
+		return false
+	}
+
+	switch v2.Kind() {
+	case reflect.Array:
+		for i := 0; i < v2.Len(); i++ {
+			if !deepValueContains(v1.Index(i), v2.Index(i), depth+1) {
+				return false
+			}
+		}
+		return true
+	case reflect.Slice:
+		if v1.IsNil() || v2.IsNil() {
+			return v2.IsNil()
+		}
+		if v1.Len() < v2.Len() {
+			return false
+		}
+		if v1.Pointer() == v2.Pointer() {
+			return true
+		}
+		for i := 0; i < v2.Len(); i++ {
+			if !deepValueContains(v1.Index(i), v2.Index(i), depth+1) {
+				return false
+			}
+		}
+		return true
+	case reflect.Struct:
+		for i, n := 0, v2.NumField(); i < n; i++ {
+			if !deepValueContains(v1.Field(i), v2.Field(i), depth+1) {
+				return false
+			}
+		}
+		return true
+	case reflect.Map:
+		if v1.IsNil() || v2.IsNil() {
+			return v2.IsNil()
+		}
+		if v1.Len() < v2.Len() {
+			return false
+		}
+		if v1.Pointer() == v2.Pointer() {
+			return true
+		}
+		for _, k := range v2.MapKeys() {
+			val1 := v1.MapIndex(k)
+			val2 := v2.MapIndex(k)
+			if !val1.IsValid() || !val2.IsValid() || !deepValueContains(val1, val2, depth+1) {
+				return false
+			}
+		}
+		return true
+	case reflect.Interface:
+		if v1.IsNil() || v2.IsNil() {
+			return v2.IsNil()
+		}
+		return deepValueContains(v1.Elem(), v2.Elem(), depth+1)
+	case reflect.String:
+		return v1.String() == v2.String()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v1.Int() == v2.Int()
+	case reflect.Uint8, reflect.Uint16, reflect.Uint, reflect.Uint32, reflect.Uint64:
+		return v1.Uint() == v2.Uint()
+	case reflect.Bool:
+		return v1.Bool() == v2.Bool()
+	case reflect.Float32, reflect.Float64:
+		return v1.Float() == v2.Float()
+	default:
+		return  false
+	}
+}
+
 func areEqualJSON(s1, s2 string) (bool, error) {
 	var o1 interface{}
 	var o2 interface{}

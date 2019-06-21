@@ -139,5 +139,6 @@ func (a *Aidi) Send() *Aidi {
 // Add a file to the Form data for the coming request
 func (a *Aidi) AddError(message string) *Aidi {
 	a.Errs = append(a.Errs, errors.New(message))
+	Global.AddError(a.Name, message)
 	return a
 }
