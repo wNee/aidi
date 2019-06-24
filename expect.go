@@ -64,7 +64,7 @@ func (a *Aidi) ExpectBodyContainJson(bodyJson string) *Aidi {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(a.Resp.Body)
 	s := buf.String()
-	equal, err := containsJSON(bodyJson, s)
+	equal, err := containsJSON(s, bodyJson)
 	if err != nil {
 		a.AddError(err.Error())
 		return a
@@ -175,7 +175,7 @@ func deepValueContains(v1, v2 reflect.Value, depth int) bool {
 	case reflect.Float32, reflect.Float64:
 		return v1.Float() == v2.Float()
 	default:
-		return  false
+		return false
 	}
 }
 
